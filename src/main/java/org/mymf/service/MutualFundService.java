@@ -16,6 +16,39 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
+/**
+ * The {@code MutualFundService} class provides methods to manage and retrieve
+ * mutual fund data. This service handles the fetching of mutual fund information
+ * from an external API, saving it to the database, and exposing methods to query
+ * the data based on scheme name or scheme type.
+ *
+ * <p>This class is a Spring {@code @Service} component and is typically used by
+ * the controller to handle business logic related to mutual funds.</p>
+ *
+ * <h2>Key Responsibilities:</h2>
+ * <ul>
+ *   <li>Fetching mutual fund data from the external API.</li>
+ *   <li>Saving or updating mutual fund data in the database.</li>
+ *   <li>Providing methods to query mutual fund data by scheme name or scheme type.</li>
+ * </ul>
+ *
+ * <h2>Usage:</h2>
+ * This class should be annotated with {@code @Service} to allow Spring to manage it as a bean.
+ *
+ * <pre>
+ * {@code
+ * @Service
+ * public class MutualFundService {
+ *     // Business logic for mutual funds
+ * }
+ * }
+ * </pre>
+ *
+ * @author [Manojkumar]
+ * @version 1.0
+ * @since 2024-10-03
+ */
 @Service
 public class MutualFundService
 {
@@ -28,14 +61,22 @@ public class MutualFundService
     @Autowired
     private RestTemplate restTemplate;
 
-    // Method to fetch and save data from MFAPI
+    /**
+     * Fetches and saves mutual fund data from an external API.
+     * <p>This method is called during the initialization of the service
+     * and updates the database with the latest mutual fund data.</p>
+     */
     @PostConstruct
     public void init ()
     {
         fetchAndSaveMutualFunds();
     }
 
-    // Fetch the latest data from the API and store NAV values
+    /**
+     * Fetches mutual fund data from the external API and saves it in the database.
+     * <p>If a mutual fund already exists, it will be updated with the new data.
+     * Otherwise, the new mutual fund is added to the database.</p>
+     */
     public void fetchAndSaveMutualFunds ()
     {
         // Fetch all mutual fund data from the general API
@@ -70,7 +111,12 @@ public class MutualFundService
         }
     }
 
-    // Method to fetch NAV value for a specific scheme
+    /**
+     * Retrieves a list of mutual funds by scheme code for all nav value.
+     *
+     * @param schemeName The name of the scheme to search for.
+     * @return A list of mutual funds matching the scheme code with nav value.
+     */
     public Map<String, Object> getSchemeDetails (String schemeCode)
     {
         String apiUrl = MF_API_URL + "/" + schemeCode;
@@ -83,7 +129,7 @@ public class MutualFundService
         }
     }
 
-    // Parse the NAV history from the API response
+
     private List<NAVHistory> parseNavHistory (ArrayList<HashMap<String, String>> navData)
     {
         List<NAVHistory> navHistoryList = new ArrayList<>();
@@ -104,12 +150,24 @@ public class MutualFundService
         return navHistoryList;
     }
 
-    // Other service methods like getMutualFundsBySchemeName, etc.
+
+    /**
+     * Retrieves a list of mutual funds by scheme name.
+     *
+     * @param schemeName The name of the scheme to search for.
+     * @return A list of mutual funds matching the scheme name.
+     */
     public List<MutualFund> getMutualFundsBySchemeName (String schemeName)
     {
         return mutualFundRepository.findBySchemeNameContaining(schemeName);
     }
 
+    /**
+     * Retrieves a list of mutual funds by scheme type.
+     *
+     * @param schemeType The type of the scheme to search for.
+     * @return A list of mutual funds matching the scheme type.
+     */
     public List<MutualFund> getMutualFundsBySchemeType (String schemeType)
     {
         return mutualFundRepository.findBySchemeType(schemeType);
