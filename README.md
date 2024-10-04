@@ -39,13 +39,12 @@ The **Mutual Fund System** fetches mutual fund data from the [mfapi.in](https://
 - Uses a scheduler to pull data once per day.
 - Microservice architecture.
 - Dockerized for container-based deployment.
-- Batch commits for performance improvement.
 
 ## Prerequisites
 
 - Java 17+
 - Maven 3+
-- Docker or Podman
+- Podman
 - PostgreSQL (for production)
 - H2 (for local development)
   
@@ -53,7 +52,7 @@ The **Mutual Fund System** fetches mutual fund data from the [mfapi.in](https://
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/mutual-fund-system.git
+git clone https://github.com/manojgct84/MutualFundService.git
 cd mutual-fund-system
 ```
 
@@ -76,7 +75,7 @@ spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
 
 For **PostgreSQL (production)**:
 ```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/mutualfunddb
+spring.datasource.url=jdbc:postgresql://localhost:5433/mutualfunddb
 spring.datasource.username=admin
 spring.datasource.password=admin123
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
@@ -116,14 +115,15 @@ mvn spring-boot:run
 - Build the Docker image for the application:
 
 ```bash
-docker build -t mutual-fund-app .
+docker build -t mutual-fund-app.
 ```
 
 - Run the Docker container with PostgreSQL:
 
 ```bash
-docker run --name postgres-db -e POSTGRES_DB=mutualfunddb -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=admin123 -d postgres
-docker run --name mutual-fund-service --link postgres-db:postgres -p 8080:8080 mutual-fund-app
+podman run --name postgres-db -e POSTGRES_DB=mutualfunddb -e POSTGRES_USER=admin -e 
+POSTGRES_PASSWORD=admin123 -d postgres
+podman run --name mutual-fund-service --link postgres-db:postgres -p 8080:8080 mutual-fund-app
 ```
 
 ### 2. Run the Application with Podman (if using Podman):
