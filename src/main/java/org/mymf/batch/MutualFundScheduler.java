@@ -30,7 +30,8 @@ public class MutualFundScheduler
     /**
      * Scheduled method that triggers the data fetch and save process.
      * <p>
-     * This method is executed once a day at 1 AM server time (configurable through the cron expression).
+     * This method is executed once a day at 12 AM server time (configurable through the cron
+     * expression).
      * </p>
      *
      * <p>The schedule is defined using the cron expression {@code "0 0 1 * * ?"},
