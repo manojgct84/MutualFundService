@@ -66,12 +66,19 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
         <!--Get the Mutual Funds details -->
-        <dependency>
-            <groupId>com.webencyclop</groupId>
-            <artifactId>mftool-java</artifactId>
-            <version>1.0.0</version>
-        </dependency>
+        <!--  <dependency>
+              <groupId>com.webencyclop</groupId>
+              <artifactId>mftool-java</artifactId>
+              <version>1.0.0</version>
+          </dependency>-->
+
+        <!--        <dependency>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>okhttp</artifactId>
+                    <version>4.9.3</version>
+                </dependency>-->
 
         <dependency>
             <groupId>junit</groupId>

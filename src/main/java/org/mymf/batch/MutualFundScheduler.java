@@ -26,7 +26,6 @@ public class MutualFundScheduler
     @Autowired
     private MutualFundService mutualFundService;
 
-
     /**
      * Scheduled method that triggers the data fetch and save process.
      * <p>

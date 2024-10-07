@@ -5,6 +5,7 @@ import jakarta.annotation.PostConstruct;
 import org.mymf.data.MutualFund;
 import org.mymf.data.MutualFundRepository;
 import org.mymf.data.NAVHistory;
+import org.mymf.service.finsire.MutualFundFinSireService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -54,12 +55,17 @@ public class MutualFundService
 {
 
     private final String MF_API_URL = "https://api.mfapi.in/mf";
-
+    private final MutualFundFinSireService mutualFundFinSireService;
     @Autowired
     private MutualFundRepository mutualFundRepository;
-
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    public MutualFundService (MutualFundFinSireService mutualFundFinSireService)
+    {
+        this.mutualFundFinSireService = mutualFundFinSireService;
+    }
 
     /**
      * Fetches and saves mutual fund data from an external API.
@@ -86,7 +92,6 @@ public class MutualFundService
             for (MutualFund fund : funds) {
                 // Get additional scheme details, like NAV history for each mutual fund scheme
                 Map<String, Object> schemeDetails = getSchemeDetails(fund.getSchemeCode());
-
                 if (schemeDetails != null) {
                     // Parse the NAV history and store it
                     ArrayList<HashMap<String, String>> navData = (ArrayList<HashMap<String, String>>) schemeDetails.get("data");
@@ -114,7 +119,7 @@ public class MutualFundService
     /**
      * Retrieves a list of mutual funds by scheme code for all nav value.
      *
-     * @param schemeName The name of the scheme to search for.
+     * @param schemeCode The name of the scheme to search for.
      * @return A list of mutual funds matching the scheme code with nav value.
      */
     public Map<String, Object> getSchemeDetails (String schemeCode)

@@ -10,7 +10,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -22,6 +24,8 @@ import org.mockito.MockitoAnnotations;
 import org.mymf.data.MutualFund;
 import org.mymf.data.MutualFundRepository;
 import org.mymf.data.NAVHistory;
+import org.mymf.service.finsire.MutualFundFinSireService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.web.client.RestTemplate;
@@ -80,7 +84,11 @@ public class MutualFundServiceTest
 
         MutualFund newFund = new MutualFund();
         newFund.setSchemeCode("ABC123");
-        newFund.setNavHistory(new ArrayList<>((Collection) new NAVHistory(LocalDate.parse("10-08-2024"), 100.00)));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+        NAVHistory navHistory = new NAVHistory(LocalDate.parse("10-08-2024", formatter), 100.00);
+        List<NAVHistory> navHistoryList = new ArrayList<>(Arrays.asList(navHistory));
+        newFund.setNavHistory(navHistoryList);
         newFund.setUpdatedAt(LocalDate.now().atStartOfDay());
 
         MutualFund[] mockResponse = {newFund};
