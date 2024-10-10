@@ -55,17 +55,11 @@ public class MutualFundService
 {
 
     private final String MF_API_URL = "https://api.mfapi.in/mf";
-    private final MutualFundFinSireService mutualFundFinSireService;
     @Autowired
     private MutualFundRepository mutualFundRepository;
     @Autowired
     private RestTemplate restTemplate;
 
-    @Autowired
-    public MutualFundService (MutualFundFinSireService mutualFundFinSireService)
-    {
-        this.mutualFundFinSireService = mutualFundFinSireService;
-    }
 
     /**
      * Fetches and saves mutual fund data from an external API.
@@ -176,6 +170,12 @@ public class MutualFundService
     public List<MutualFund> getMutualFundsBySchemeType (String schemeType)
     {
         return mutualFundRepository.findBySchemeType(schemeType);
+    }
+
+
+    public List<MutualFund> getAllMutualFunds ()
+    {
+        return mutualFundRepository.findAll();
     }
 }
 

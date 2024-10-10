@@ -1,6 +1,10 @@
 package org.mymf.batch;
 
+import java.util.List;
+
+import org.mymf.data.MutualFund;
 import org.mymf.service.MutualFundService;
+import org.mymf.service.finsire.MutualFundFinSireService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -26,6 +30,9 @@ public class MutualFundScheduler
     @Autowired
     private MutualFundService mutualFundService;
 
+    @Autowired
+    private MutualFundFinSireService mutualFundFinSireService;
+
     /**
      * Scheduled method that triggers the data fetch and save process.
      * <p>
@@ -40,6 +47,12 @@ public class MutualFundScheduler
     public void updateMutualFundsDaily ()
     {
         mutualFundService.fetchAndSaveMutualFunds();
+
+        List<MutualFund> allDetails = mutualFundService.getAllMutualFunds();
+
+        for (MutualFund mf : allDetails) {
+            mutualFundFinSireService.fetchAndSaveMutualFundDetails(mf.getSchemeCode());
+        }
     }
 }
 

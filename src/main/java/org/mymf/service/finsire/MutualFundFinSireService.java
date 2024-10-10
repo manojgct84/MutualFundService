@@ -1,10 +1,8 @@
 package org.mymf.service.finsire;
 
 import java.io.IOException;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -14,12 +12,9 @@ import java.util.Objects;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
-import org.mymf.config.FinSireOAuthTokenInit;
 import org.mymf.data.finsire.DataMetrics;
 import org.mymf.data.finsire.DiscreteReturns;
 import org.mymf.data.finsire.DiscreteReturnsRepository;
-import org.mymf.data.finsire.MutualFundDetails;
-import org.mymf.data.finsire.MutualFundDetailsRepository;
 import org.mymf.data.finsire.NavHistoryDetails;
 import org.mymf.data.finsire.NavHistoryRepository;
 import org.mymf.data.finsire.RiskRequest;
@@ -33,11 +28,14 @@ import org.mymf.data.finsire.risk.CategoryLevelRisk;
 import org.mymf.data.finsire.risk.CategoryLevelRiskRepository;
 import org.mymf.data.finsire.risk.CategoryRiskResponse;
 import org.mymf.data.finsire.risk.RiskAverages;
+import org.mymf.service.TokenService;
+import org.mymf.service.finsire.mapping.MutualFundDetailsMapping;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -50,11 +48,10 @@ public class MutualFundFinSireService
 
     private final RestTemplate restTemplate; // OkHttpClient is injected
 
-    private final FinSireOAuthTokenInit finSireOAuthTokenInit;
+    private final TokenService tokenService;
 
     @Autowired
-    private MutualFundDetailsRepository mutualFundDetailsRepository;
-
+    private MutualFundDetailsMapping mutualFundDetailsMapping;
     @Autowired
     private NavHistoryRepository navHistoryRepository;
 
@@ -75,10 +72,10 @@ public class MutualFundFinSireService
 
     // Constructor to inject the RestTemplate instance
     @Autowired
-    public MutualFundFinSireService (final FinSireOAuthTokenInit finSireOAuthTokenInit,
+    public MutualFundFinSireService (final TokenService tokenService,
                                      final RestTemplate restTemplate)
     {
-        this.finSireOAuthTokenInit = finSireOAuthTokenInit;
+        this.tokenService = tokenService;
         this.restTemplate = restTemplate;
     }
 
@@ -91,13 +88,8 @@ public class MutualFundFinSireService
     {
         final String url = baseUrl + "mf_detailed?scheme_code=" + schemeCode;
 
-        // Create headers
-        final HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + getEncryptedToken());
-        headers.set("Accept", "application/json");
-
         // Create an entity with the headers
-        final HttpEntity<String> entity = new HttpEntity<>(headers);
+        final HttpEntity<String> entity = new HttpEntity<>(buildHeaders());
 
         try {
             // Make the GET request with RestTemplate and fetch the response as a String
@@ -115,51 +107,8 @@ public class MutualFundFinSireService
             // Extract mutual fund details from response data
             final JsonNode dataNode = responseBody.path("response").path("data").path(schemeCode);
 
-            final MutualFundDetails mutualFundDetails = new MutualFundDetails();
-            mutualFundDetails.setAmcCode(dataNode.path("amc_code").asText());
-            mutualFundDetails.setAmcName(dataNode.path("amc_name").asText());
-            mutualFundDetails.setSchemeName(dataNode.path("scheme_name").asText());
-            mutualFundDetails.setSchemeNameUnique(dataNode.path("scheme_name_unique").asText());
-            mutualFundDetails.setSchemeCode(dataNode.path("scheme_code").asText());
-            mutualFundDetails.setDateOfInception(LocalDate.parse(dataNode.path("date_of_inception").asText(), DateTimeFormatter.ofPattern("dd-MMM-yy")));
-            mutualFundDetails.setAssetCategory(dataNode.path("asset_category").asText());
-            mutualFundDetails.setAssetSubCategory(dataNode.path("asset_sub_category").asText());
-            mutualFundDetails.setOptionName(dataNode.path("option_name").asText());
-            mutualFundDetails.setPlanName(dataNode.path("plan_name").asText());
-            mutualFundDetails.setRiskProfile(dataNode.path("risk_profile").asText());
-            mutualFundDetails.setRiskRating(dataNode.path("risk_rating").asInt());
-            mutualFundDetails.setBenchmark(dataNode.path("benchmark").asText());
-            mutualFundDetails.setNav(dataNode.path("nav").asDouble());
-            mutualFundDetails.setNavDate(LocalDate.parse(dataNode.path("nav_date").asText().substring(0, 10))); // Only the date part
-            mutualFundDetails.setFundSize(dataNode.path("fund_size").asDouble());
-            mutualFundDetails.setFundManager(dataNode.path("fund_manager").asText());
-            mutualFundDetails.setIsinDividendPayoutOrGrowth(dataNode.path("isin_dividend_payout_or_growth").asText());
-            mutualFundDetails.setIsinDividendReinvest(dataNode.path("isin_dividend_reinvest").asText(""));
-            mutualFundDetails.setBseTxn(dataNode.path("bse_txn").asText());
-            mutualFundDetails.setBseCodePayoutOrGrowth(dataNode.path("bse_code_payout_or_growth").asText());
-            mutualFundDetails.setBseCodeReinvest(dataNode.path("bse_code_reinvest").asText(""));
-            mutualFundDetails.setExpenseRatio(dataNode.path("expense_ratio(s)_&_d").asDouble());
-            mutualFundDetails.setObjective(dataNode.path("objective").asText());
-            mutualFundDetails.setSchemeDocUrl(dataNode.path("scheme_doc_url").asText());
-            mutualFundDetails.setRiskometer(dataNode.path("riskometer").asText());
-
-            // Transaction Info
-            final JsonNode txnInfo = dataNode.path("txn_info");
-            mutualFundDetails.setMinInvest(txnInfo.path("min_invest").asInt());
-            mutualFundDetails.setMinInvestSip(txnInfo.path("min_invest_sip").asInt());
-            mutualFundDetails.setVrRating(dataNode.path("vr_rating").asText());
-
-            // Exit Load
-            final MutualFundDetails.ExitLoad exitLoad = new MutualFundDetails.ExitLoad();
-            JsonNode exitLoadNode = dataNode.path("exit_load");
-            exitLoad.setExitLoadPeriod(exitLoadNode.path("exit_load_period").asInt());
-            exitLoad.setExitLoadRate(exitLoadNode.path("exit_load_rate").asDouble());
-            exitLoad.setExitLoadPeriodRemark(exitLoadNode.path("exit_load_period_remark").asText());
-
-            mutualFundDetails.setExitLoad(exitLoad);
-
-            // Save to database
-            mutualFundDetailsRepository.save(mutualFundDetails);
+            //Map the repose to object
+            mutualFundDetailsMapping.mapDetails(dataNode);
 
         }
         catch (Exception e) {
@@ -168,20 +117,15 @@ public class MutualFundFinSireService
     }
 
     /**
-     * Fetch and store mutual fund details from the API based on the schemeCode.
-     *
-     * @param schemeCode The mutual fund scheme code.
-     * @return The mutual fund details.
+     * Build headers with authorization token.
      */
-
-    /**
-     * Utility method to generate the encrypted token for API authentication.
-     */
-    private String getEncryptedToken ()
+    private HttpHeaders buildHeaders ()
     {
-        String token =
-            finSireOAuthTokenInit.getLenderSecret() + ":" + finSireOAuthTokenInit.getDistributorSecret();
-        return Base64.getUrlEncoder().encodeToString(token.getBytes());
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Basic " + tokenService.getEncryptedToken());
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        return headers;
     }
 
     /**
@@ -200,14 +144,8 @@ public class MutualFundFinSireService
         requestBody.put("to", toDate);
         requestBody.put("frequency", frequency);
 
-        // Prepare headers
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Basic " + getEncryptedToken()); // Add Authorization
-        headers.setAccept(new ArrayList<>(List.of(new org.springframework.http.MediaType[]{org.springframework.http.MediaType.APPLICATION_JSON})));
-
         // Create HttpEntity to include both headers and body
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, buildHeaders());
 
         try {
             // Send POST request using RestTemplate
@@ -249,13 +187,8 @@ public class MutualFundFinSireService
         final String url =
             baseUrl + "security_holdings?scheme_code=" + schemeCode + "&date=" + date;
 
-        // Prepare headers
-        final HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + getEncryptedToken());  // Add Authorization
-        headers.set("Accept", "application/json");
-
         // Create HttpEntity with headers
-        final HttpEntity<String> entity = new HttpEntity<>(headers);
+        final HttpEntity<String> entity = new HttpEntity<>(buildHeaders());
 
         try {
             // Send GET request and get the response
@@ -311,10 +244,8 @@ public class MutualFundFinSireService
                                                                   final String date)
     {
         final String url = baseUrl + "sector_holdings?scheme_code=" + schemeCode + "&date=" + date;
-        final HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Basic " + getEncryptedToken());
 
-        final HttpEntity<String> entity = new HttpEntity<>(headers);
+        final HttpEntity<String> entity = new HttpEntity<>(buildHeaders());
         List<SectorWiseHolding> sectorWiseHoldingList = null;
         try {
             ResponseEntity<String> response = restTemplate.exchange(
@@ -355,14 +286,9 @@ public class MutualFundFinSireService
     {
 
         final String url = baseUrl + "/category_level_risks/";
-        final HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", "Basic " + getEncryptedToken());
-
-        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
-        headers.set("accept", "application/json");
 
         // Create the request entity (headers + body)
-        final HttpEntity<RiskRequest> entity = new HttpEntity<>(request, headers);
+        final HttpEntity<RiskRequest> entity = new HttpEntity<>(request, buildHeaders());
 
         // Send POST request
         final ResponseEntity<CategoryRiskResponse> response = restTemplate.exchange(
@@ -417,14 +343,8 @@ public class MutualFundFinSireService
             + "\"frequency\":\"" + range + "\""
             + "}";
 
-        // Set headers
-        final HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + getEncryptedToken());  // Add Authorization token
-        headers.set("Accept", "application/json");
-        headers.set("Content-Type", "application/json");
-
         // Create request entity
-        final HttpEntity<String> requestEntity = new HttpEntity<>(jsonBody, headers);
+        final HttpEntity<String> requestEntity = new HttpEntity<>(jsonBody, buildHeaders());
 
         try {
             // Make POST request
@@ -512,7 +432,8 @@ public class MutualFundFinSireService
      */
 
     @Transactional
-    public void fetchAndSaveDiscreteReturns(String schemeCode, String fromDate, String frequency) {
+    public void fetchAndSaveDiscreteReturns (String schemeCode, String fromDate, String frequency)
+    {
         final String url = baseUrl + "discrete_returns";
 
         // Create the request body as a JSON string
@@ -521,14 +442,8 @@ public class MutualFundFinSireService
             schemeCode, fromDate, frequency
         );
 
-        // Set the headers
-        final HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Basic " + getEncryptedToken());  // Add Authorization token
-        headers.set("Accept", "application/json");
-        headers.set("Content-Type", "application/json");
-
         // Create the HttpEntity with headers and request body
-        final HttpEntity<String> requestEntity = new HttpEntity<>(jsonRequestBody, headers);
+        final HttpEntity<String> requestEntity = new HttpEntity<>(jsonRequestBody, buildHeaders());
 
         try {
             // Make the POST request using RestTemplate
@@ -573,7 +488,8 @@ public class MutualFundFinSireService
                 // Save the discrete return to the database
                 discreteReturnsRepository.save(discreteReturn);
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

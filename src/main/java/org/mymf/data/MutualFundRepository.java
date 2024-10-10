@@ -46,5 +46,13 @@ public interface MutualFundRepository extends JpaRepository<MutualFund, Long>
      * @return A list of mutual funds that match the given scheme code.
      */
     List<MutualFund> findBySchemeCode (String schemeCode);
+
+
+    /**
+     * Get mutual funds details of all.
+     *
+     * @return all the mutual fund details.
+     */
+    List<MutualFund> findAll();
 }
 
