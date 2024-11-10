@@ -60,7 +60,7 @@ public class MutualFundDetailsMapping implements MutualFundMapping
         exitLoad.setExitLoadPeriodRemark(exitLoadNode.path("exit_load_period_remark").asText());
 
         mutualFundDetails.setExitLoad(exitLoad);
-
+        System.out.println(String.format("mutualFundDetails %s ", mutualFundDetails.toString()));
         mutualFundDetailsRepository.save(mutualFundDetails);
     }
 }

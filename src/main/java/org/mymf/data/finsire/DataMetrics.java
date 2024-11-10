@@ -1,5 +1,7 @@
 package org.mymf.data.finsire;
 
+import java.util.List;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,9 +12,6 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-import org.mymf.data.finsire.TimeRangeMetrics;
-
-import java.util.List;
 
 @Getter
 @Setter

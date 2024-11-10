@@ -12,6 +12,9 @@ import java.util.Objects;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.mymf.StartupTask;
 import org.mymf.data.finsire.DataMetrics;
 import org.mymf.data.finsire.DiscreteReturns;
 import org.mymf.data.finsire.DiscreteReturnsRepository;
@@ -44,9 +47,12 @@ import org.springframework.web.client.RestTemplate;
 public class MutualFundFinSireService
 {
 
-    private final String baseUrl = "https://sandbox.dpiwealth.com/v1/api/mf_data/"; // Example URL for the API
+    private static final Logger logger = LogManager.getLogger(MutualFundFinSireService.class);
 
-    private final RestTemplate restTemplate; // OkHttpClient is injected
+    // URL for the MF API
+    private final String baseUrl = "https://sandbox.dpiwealth.com/v1/api/mf_data/";
+
+    private final RestTemplate restTemplate; // restTemplate is injected
 
     private final TokenService tokenService;
 
@@ -84,10 +90,10 @@ public class MutualFundFinSireService
      *
      * @param schemeCode - Scheme code of the mutual fund
      */
-    public void fetchAndSaveMutualFundDetails (String schemeCode)
+    public void fetchAndSaveMutualFundDetails (String schemeCode) throws Exception
     {
         final String url = baseUrl + "mf_detailed?scheme_code=" + schemeCode;
-
+        logger.info(String.format("finservice url %s", url));
         // Create an entity with the headers
         final HttpEntity<String> entity = new HttpEntity<>(buildHeaders());
 
@@ -99,11 +105,20 @@ public class MutualFundFinSireService
             if (response.getStatusCode() != HttpStatus.OK) {
                 throw new RuntimeException("Failed to fetch mutual fund details: " + response.getStatusCode());
             }
-
             // Parse JSON response
             final ObjectMapper objectMapper = new ObjectMapper();
-            final JsonNode responseBody = objectMapper.readTree(response.getBody());
+            // Parse JSON response body
+            JsonNode rootNode = objectMapper.readTree(response.getBody());
+            // Extract specific fields
+            boolean status = rootNode.path("status").asBoolean();
+            int responseCode = rootNode.path("response").path("code").asInt();
+            String message = rootNode.path("response").path("message").asText();
 
+            if (responseCode == 206) {
+                logger.info(String.format("Message %s %s ", status, message));
+                return;
+            }
+            final JsonNode responseBody = objectMapper.readTree(response.getBody());
             // Extract mutual fund details from response data
             final JsonNode dataNode = responseBody.path("response").path("data").path(schemeCode);
 
@@ -112,7 +127,7 @@ public class MutualFundFinSireService
 
         }
         catch (Exception e) {
-            throw new RuntimeException("Error while fetching mutual fund details", e);
+            throw e;
         }
     }
 
@@ -165,15 +180,15 @@ public class MutualFundFinSireService
                     navHistoryRepository.save(navHistoryDetails);
                 }
 
-                System.out.println("Nav history details saved successfully.");
+                logger.info("Nav history details saved successfully.");
             }
             else {
-                System.out.println("Error: " + response.getStatusCodeValue() + " " + response.getStatusCode());
+                logger.info("Error: " + response.getStatusCodeValue() + " " + response.getStatusCode());
             }
         }
         catch (Exception e) {
             e.printStackTrace();
-            System.out.println("Error while fetching NAV history details.");
+            logger.error("Error while fetching NAV history details.");
         }
     }
 
@@ -186,7 +201,7 @@ public class MutualFundFinSireService
     {
         final String url =
             baseUrl + "security_holdings?scheme_code=" + schemeCode + "&date=" + date;
-
+        logger.info(String.format("Security holding url %s", url));
         // Create HttpEntity with headers
         final HttpEntity<String> entity = new HttpEntity<>(buildHeaders());
 
@@ -221,7 +236,8 @@ public class MutualFundFinSireService
                     holding.setSector(node.path("sector").asText());
                     holding.setEquivRating(node.path("equiv_rating").asText());
                     holding.setIsinSecurity(node.path("isin_security").asText());
-
+                    logger.info(String.format("Sector Holding for %s ,%s", schemeCode,
+                        holding.toString()));
                     // Step 4: Save to the database
                     securityHoldingsRepository.save(holding);
                 }
@@ -244,7 +260,7 @@ public class MutualFundFinSireService
                                                                   final String date)
     {
         final String url = baseUrl + "sector_holdings?scheme_code=" + schemeCode + "&date=" + date;
-
+        logger.info(String.format("Sector holding url %s", url));
         final HttpEntity<String> entity = new HttpEntity<>(buildHeaders());
         List<SectorWiseHolding> sectorWiseHoldingList = null;
         try {
@@ -265,6 +281,8 @@ public class MutualFundFinSireService
                     swHolding.setHoldingPerc(node.path("holding_perc").decimalValue());
                     swHolding.setMarketValue(node.path("market_value").decimalValue());
                     swHolding.setAsOnDate(node.path("as_on_date").asText());
+                    logger.info(String.format("Sector Holding for %s ,%s", schemeCode,
+                        swHolding.toString()));
                     // Step 4: Save to the database
                     sectorWiseHoldingRepository.save(swHolding);
                     sectorWiseHoldingList.add(swHolding);

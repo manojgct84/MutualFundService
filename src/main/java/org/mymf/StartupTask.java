@@ -1,4 +1,4 @@
-package org.mymf.batch;
+package org.mymf;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -14,30 +14,19 @@ import org.mymf.data.MutualFund;
 import org.mymf.exception.RecordStatusTracker;
 import org.mymf.service.MutualFundService;
 import org.mymf.service.finsire.MutualFundFinSireService;
+import org.mymf.service.finsire.cas.CasReportRetriever;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /**
- * The {@code MutualFundScheduler} class is responsible for scheduling
- * the periodic fetching and updating of mutual fund data from an external API.
- * This scheduler ensures that the mutual fund data is updated in the system once a day.
- *
- * <p> It uses Spring's {@code @Scheduled} annotation to define a scheduled task
- * that runs at a fixed interval, and it relies on the {@code MutualFundService}
- * to perform the data-fetching and saving operations.
- *
- * @author [Manojkumar M]
- * @version 1.0
- * @since 2024-10-03
+ * This is to run the batch service to get the data for the api.
  */
-
 @Component
-public class MutualFundScheduler
+public class StartupTask
 {
-
-    private static final Logger logger = LogManager.getLogger(MutualFundScheduler.class);
-
+    private static final Logger logger = LogManager.getLogger(StartupTask.class);
 
     @Autowired
     private MutualFundService mutualFundService;
@@ -49,37 +38,33 @@ public class MutualFundScheduler
     private RecordStatusTracker recordStatusTracker;
 
     /**
-     * Scheduled method that triggers the data fetch and save process.
-     * <p>
-     * This method is executed once a day at 12 AM server time (configurable through the cron
-     * expression).
-     * </p>
-     *
-     * <p>The schedule is defined using the cron expression {@code "0 0 1 * * ?"},
-     * which means the method will run at 00:00 AM every day.</p>
+     * This will call the service to get all the MF data.
      */
-    @Scheduled(cron = "0 0 0 * * ?")
-    public void updateMutualFundsDaily () throws IOException
+    @EventListener(ApplicationReadyEvent.class)
+    public void runAfterStartup () throws IOException
     {
-        LocalDate tMinusOneDate = LocalDate.now().minusMonths(1);
+        LocalDate tMinusOneDate = LocalDate.now().minusMonths(2);
         DateTimeFormatter holdingDate = DateTimeFormatter.ofPattern("yyyy-MM");
         String tMinusOneDateString = tMinusOneDate.format(holdingDate);
         logger.info(String.format("Holding for the month %s", tMinusOneDateString));
-
-        mutualFundService.fetchAndSaveMutualFunds();
-
+        logger.info("Application is fully started!");
+        //mutualFundService.init();
         List<MutualFund> allDetails = mutualFundService.getAllMutualFunds();
 
-        logger.info("allDetails size %s", allDetails.size());
+        logger.info(String.format("allDetails size %s", allDetails.size()));
 
         for (MutualFund mf : allDetails) {
             try {
-
+                Set<String> insertedRecords = recordStatusTracker.loadExistingRecords();
+                if (insertedRecords.contains(mf.getSchemeCode())) {
+                    continue;
+                }
                 mutualFundFinSireService.fetchAndSaveMutualFundDetails(mf.getSchemeCode());
                 mutualFundFinSireService.fetchAndSaveSectorWiseHolding(mf.getSchemeCode(),
                     tMinusOneDateString);
                 mutualFundFinSireService.fetchAndSaveSecurityHoldings(mf.getSchemeCode(),
                     tMinusOneDateString);
+                recordStatusTracker.logSuccessRecord(mf.getSchemeCode());
             }
             catch (Exception e) {
                 Matcher codeMatcher = extractErrorCode(String.valueOf(e));
@@ -89,6 +74,7 @@ public class MutualFundScheduler
                 }
             }
         }
+
     }
 
     public static Matcher extractErrorCode (String log)
@@ -102,4 +88,3 @@ public class MutualFundScheduler
         return null;
     }
 }
-

@@ -1,7 +1,15 @@
 package org.mymf.service;
 
 
-import jakarta.annotation.PostConstruct;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.mymf.data.MutualFund;
 import org.mymf.data.MutualFundRepository;
 import org.mymf.data.NAVHistory;
@@ -9,13 +17,6 @@ import org.mymf.service.finsire.MutualFundFinSireService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 
 /**
@@ -54,6 +55,8 @@ import java.util.Map;
 public class MutualFundService
 {
 
+    private static final Logger logger = LogManager.getLogger(MutualFundService.class);
+
     private final String MF_API_URL = "https://api.mfapi.in/mf";
     @Autowired
     private MutualFundRepository mutualFundRepository;
@@ -66,7 +69,7 @@ public class MutualFundService
      * <p>This method is called during the initialization of the service
      * and updates the database with the latest mutual fund data.</p>
      */
-    @PostConstruct
+    //@PostConstruct
     public void init ()
     {
         fetchAndSaveMutualFunds();
@@ -86,6 +89,7 @@ public class MutualFundService
             for (MutualFund fund : funds) {
                 // Get additional scheme details, like NAV history for each mutual fund scheme
                 Map<String, Object> schemeDetails = getSchemeDetails(fund.getSchemeCode());
+                logger.info("scheme details response %s", schemeDetails.toString());
                 if (schemeDetails != null) {
                     // Parse the NAV history and store it
                     ArrayList<HashMap<String, String>> navData = (ArrayList<HashMap<String, String>>) schemeDetails.get("data");
@@ -106,7 +110,7 @@ public class MutualFundService
                     }
                 }
             }
-            System.out.print("The DB insert process is completed!!!");
+            logger.info("The DB insert process is completed!!!");
         }
     }
 
@@ -116,11 +120,12 @@ public class MutualFundService
      * @param schemeCode The name of the scheme to search for.
      * @return A list of mutual funds matching the scheme code with nav value.
      */
-    public Map<String, Object> getSchemeDetails (String schemeCode)
+    public  Map<String, Object> getSchemeDetails (String schemeCode)
     {
         String apiUrl = MF_API_URL + "/" + schemeCode;
+        logger.info("api scheme details url %s", apiUrl);
         try {
-            return restTemplate.getForObject(apiUrl, Map.class);
+            return ( Map<String, Object> )restTemplate.getForObject(apiUrl, Map.class);
         }
         catch (Exception e) {
             e.printStackTrace();

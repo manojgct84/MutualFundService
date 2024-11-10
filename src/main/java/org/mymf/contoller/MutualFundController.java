@@ -1,10 +1,13 @@
 package org.mymf.contoller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.mymf.data.MutualFund;
 import org.mymf.service.MutualFundService;
+import org.mymf.service.finsire.cas.CasReportRetriever;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -61,12 +64,15 @@ import org.springframework.web.bind.annotation.RestController;
  * @since 2024-10-03
  */
 @RestController
-@RequestMapping("/api/mutualfunds")
+@RequestMapping("v1/api/mutualfunds")
 public class MutualFundController
 {
 
     @Autowired
     private MutualFundService mutualFundService;
+
+    @Autowired
+    private CasReportRetriever casReportRetriever;
 
     /**
      * Retrieves mutual funds by scheme name.
@@ -81,6 +87,7 @@ public class MutualFundController
     @GetMapping("/schemeName/{schemeName}")
     public List<MutualFund> getMutualFundsBySchemeName (@PathVariable String schemeName)
     {
+        System.out.printf("request for %s", schemeName);
         return mutualFundService.getMutualFundsBySchemeName(schemeName);
     }
 
@@ -97,6 +104,19 @@ public class MutualFundController
     public List<MutualFund> getMutualFundsBySchemeType (@PathVariable String schemeType)
     {
         return mutualFundService.getMutualFundsBySchemeType(schemeType);
+    }
+
+
+    /**
+     * Generate cas details report based on the id.
+     *
+     * @param id finservid to get the cas report.
+     * @return map with the cas report details.
+     */
+    @GetMapping("/cas/report/{id}")
+    public ResponseEntity getCasReportDetails (@PathVariable String id) throws Exception
+    {
+        return casReportRetriever.getCasReport(id);
     }
 }
 

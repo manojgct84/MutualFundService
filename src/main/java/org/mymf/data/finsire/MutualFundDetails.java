@@ -3,6 +3,7 @@ package org.mymf.data.finsire;
 
 import java.time.LocalDate;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -11,19 +12,20 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Getter
 @Setter
+@ToString
 public class MutualFundDetails
 {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
     private String amcCode;
     private String amcName;
+    @Column(columnDefinition = "TEXT")
     private String schemeName;
     private String schemeNameUnique;
     private String schemeCode;
@@ -45,7 +47,9 @@ public class MutualFundDetails
     private String bseCodePayoutOrGrowth;
     private String bseCodeReinvest;
     private double expenseRatio;
+    @Column(columnDefinition = "TEXT")
     private String objective;
+    @Column(columnDefinition = "TEXT")
     private String schemeDocUrl;
     private String riskometer;
     private int minInvest;
@@ -56,20 +60,24 @@ public class MutualFundDetails
     @Embedded
     private ExitLoad exitLoad;
 
-    // Getters and Setters
-    // Omitted for brevity
-
     @Embeddable
     @Getter
     @Setter
     public static class ExitLoad
     {
+        @Override
+        public String toString ()
+        {
+            return "ExitLoad{" +
+                "exitLoadPeriod=" + exitLoadPeriod +
+                ", exitLoadRate=" + exitLoadRate +
+                ", exitLoadPeriodRemark='" + exitLoadPeriodRemark + '\'' +
+                '}';
+        }
         private int exitLoadPeriod;
         private double exitLoadRate;
+        @Column(columnDefinition = "TEXT")
         private String exitLoadPeriodRemark;
-
-        // Getters and Setters
-        // Omitted for brevity
     }
 }
 
